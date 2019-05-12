@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Video Call</title>
+  <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.8/jquery.min.js"></script>
+  <script type="text/javascript" src="peer.js"></script>
+  <script>
+    // Yêu cầu sử dụng camera trên các trình duyệt khác nhau
+    navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
+
+    var peer = new Peer({key: '50mqv79u4c102j4i'});
+
+    peer.on('open', function() {
+      $('#my-id').text(peer.id);
+    });
+
+    // Sự kiện lắng nghe chờ cuộc gọi đến
+    peer.on('call', function(call) {
+      // Tự động chấp nhận khi có ng gọi đến
+      call.answer(window.localStream);
+      step3(call);
+    });
+
+    peer.on('error', function(err) {
+      alert(err.message);
+      // Có lỗi xảy ra
+      step2();
+    });
+
+    $(function() {
+      $('#make-call').click(function() {
+        // Gọi cho 1 id
+        var call = peer.call($('#callto-id').val(), window.localStream);
+        step3(call);
+      });
+
+      $('#end-call').click(function() {
+        window.existingCall.close();
+        step2();
+      });
+
+      // Thử lại nếu trình duyệt không đc cấp quyền camera
+      $('#step1-retry').click(function() {
+        $('#step1-error').hide();
+        step1();
+      });
+
+      step1();
+    });
+
+    function step1() {
+      // Lấy stream từ camera và audio
+      navigator.getUserMedia({
+        audio: true,
+        video: true // Nếu chỉ gọi mà không cần video thì set false
+      }, function(stream) {
+        // Hiển thị video bản thân
+        $('#my-video').prop('src', URL.createObjectURL(stream));
+        window.localStream = stream;
+        step2();
+      }, function() { $('#step1-error').show(); });
+    }
+
+    function step2() {
+      $('#step1, #step3').hide();
+      $('#step2').show();
+    }
+
+    function step3(call) {
+      // Đóng cuộc gọi dang diễn ra nếu có 1 cuộc gọi khác đến
+      if(window.existingCall) {
+        window.existingCall.close();
+      }
+
+      // Chờ và hiển thị video người gọi
+      call.on('stream', function(stream) {
+        $('#their-video').prop('src', URL.createObjectURL(stream));
+      });
+
+      window.existingCall = call;
+      $('#their-id').text(call.peer);
+      call.on('close', step2);
+      $('#step1, #step2').hide();
+      $('#step3').show();
+    }
+
+  </script>
+</head>
+<body>
+
+<!-- Video -->
+<div>
+  <video id="their-video" autoplay></video>
+  <video id="my-video" muted="true" autoplay></video>
+</div>
+
+<!-- Steps -->
+
+<!-- Get local audio/video stream -->
+<div id="step1">
+  <p>Nhấn `allow` để cấp quyền camera.</p>
+  <div id="step1-error">
+    <p>Có lỗi xảy ra</p>
+    <a href="#" id="step1-retry">Thử lại</a>
+  </div>
+</div>
+
+<!-- Make calls to others -->
+<div id="step2">
+  <p>ID của tôi: <span id="my-id">Đang kết nối...</span></p>
+  <div class="pure-form">
+    <input type="text" placeholder="ID người cần gọi" id="callto-id">
+    <a href="#" id="make-call">Gọi</a>
+  </div>
+</div>
+
+<div id="step3">
+  <p>Đang gọi: <span id="their-id">đang kết nối...</span></p>
+  <p><a href="#" id="end-call">Kết thúc cuộc gọi</a></p>
+</div>
+
+</body>
+</html>
